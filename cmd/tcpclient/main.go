@@ -4,16 +4,16 @@ import (
 	"os"
 	"time"
 
-	"github.com/evercoinx/tcp-pow-server/internal/tcpclient"
+	"github.com/evercoinx/go-tcp-pow/internal/tcpclient"
 	"github.com/jinzhu/configor"
 	log "github.com/sirupsen/logrus"
 )
 
 type AppConfig struct {
-	TCPServer TCPServer `yaml:"tcp_server"`
+	TCPClient TCPClient `yaml:"tcp_client"`
 }
 
-type TCPServer struct {
+type TCPClient struct {
 	Address string `yaml:"address" default:"127.0.0.1:8000"`
 }
 
@@ -27,7 +27,7 @@ func main() {
 	var config AppConfig
 	configor.Load(&config, "./config/config.yml")
 
-	if err := tcpclient.QueryPipeline(config.TCPServer.Address); err != nil {
+	if err := tcpclient.QueryPipeline(config.TCPClient.Address); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/evercoinx/tcp-pow-server/internal/tcpserver"
+	"github.com/evercoinx/go-tcp-pow/internal/tcpserver"
 	"github.com/jinzhu/configor"
 	"github.com/redis/go-redis/v9"
 	log "github.com/sirupsen/logrus"
@@ -16,12 +16,12 @@ type AppConfig struct {
 }
 
 type TCPServer struct {
-	Address         string        `yaml:"address" default:"127.0.0.1:8000"`
+	Address         string        `yaml:"address" default:"0.0.0.0:8000"`
 	CacheExpiration time.Duration `yaml:"cache_expiration" default:"1m"`
 }
 
 type Redis struct {
-	Address  string `yaml:"address" default:"127.0.0.1:6379"`
+	Address  string `yaml:"address" default:"redis:6379"`
 	Password string `yaml:"password" default:""`
 	DB       int    `yaml:"db" default:"0"`
 }

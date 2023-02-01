@@ -9,13 +9,13 @@ import (
 	"net"
 	"time"
 
-	"github.com/evercoinx/tcp-pow-server/internal/hashcash"
-	"github.com/evercoinx/tcp-pow-server/internal/powproto"
+	"github.com/evercoinx/go-tcp-pow/internal/hashcash"
+	"github.com/evercoinx/go-tcp-pow/internal/powproto"
 	"github.com/redis/go-redis/v9"
 	log "github.com/sirupsen/logrus"
 )
 
-const cacheKeyPrefix = "tcp-pow-server:"
+const cacheKeyPrefix = "go-tcp-pow:"
 
 var (
 	ErrUnexpectedMessageKind  = errors.New("unexpected message kind")
