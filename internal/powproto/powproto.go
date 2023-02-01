@@ -1,4 +1,4 @@
-package proto
+package powproto
 
 import (
 	"errors"
@@ -12,16 +12,16 @@ type MessageKind int
 const (
 	ChallengeRequest MessageKind = iota
 	ChallengeResponse
-	ResourceRequest
-	ResourceResponse
+	QuoteRequest
+	QuoteResponse
 	ExitRequest
 )
 
 const MessageTerminator byte = '\n'
 
 var (
-	ErrZeroLengthData     = errors.New("proto: zero length data")
-	ErrInvalidMessageKind = errors.New("proto: invalid message kind")
+	ErrZeroLengthData     = errors.New("powproto: zero length data")
+	ErrInvalidMessageKind = errors.New("powproto: invalid message kind")
 )
 
 type Message struct {

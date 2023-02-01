@@ -10,11 +10,11 @@ import (
 func init() {
 	log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
 	log.SetOutput(os.Stdout)
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
 }
 
 func main() {
-	if err := tcpclient.Query(":8000"); err != nil {
+	if err := tcpclient.QueryPipeline("127.0.0.1:8000"); err != nil {
 		log.Fatal(err)
 	}
 }

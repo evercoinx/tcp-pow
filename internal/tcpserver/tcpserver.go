@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/evercoinx/tcp-pow-server/internal/hashcash"
-	"github.com/evercoinx/tcp-pow-server/internal/proto"
+	"github.com/evercoinx/tcp-pow-server/internal/powproto"
 	"github.com/redis/go-redis/v9"
 	log "github.com/sirupsen/logrus"
 )
@@ -51,7 +51,7 @@ func (s *Server) Start(address string) error {
 	}
 	defer l.Close()
 
-	log.WithField("address", address).Info("server listening")
+	log.WithField("server_address", address).Info("server listening")
 	for {
 		conn, err := l.Accept()
 		if err != nil {
@@ -64,11 +64,11 @@ func (s *Server) Start(address string) error {
 func (s *Server) handleConnection(conn net.Conn) {
 	defer conn.Close()
 	addr := conn.RemoteAddr()
-	log.WithField("address", addr).Debug("client connected")
+	log.WithField("client_address", addr).Info("client connected")
 
 	r := bufio.NewReader(conn)
 	for {
-		reqData, err := r.ReadString(proto.MessageTerminator)
+		reqData, err := r.ReadString(powproto.MessageTerminator)
 		if err != nil {
 			log.WithError(err).Error("failed to read request data")
 			return
@@ -80,7 +80,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 			return
 		}
 		if resMsg == nil {
-			log.WithField("address", addr).Debug("client disconnected")
+			log.WithField("client_address", addr).Info("client disconnected")
 			return
 		}
 
@@ -91,38 +91,38 @@ func (s *Server) handleConnection(conn net.Conn) {
 	}
 }
 
-func (s *Server) processMessage(ctx context.Context, requestData string, clientAddr net.Addr) (*proto.Message, error) {
-	reqMsg, err := proto.Parse(requestData)
+func (s *Server) processMessage(ctx context.Context, requestData string, clientAddr net.Addr) (*powproto.Message, error) {
+	reqMsg, err := powproto.Parse(requestData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse request data: %w", err)
 	}
 
 	switch reqMsg.Kind {
-	case proto.ChallengeRequest:
+	case powproto.ChallengeRequest:
 		resMsg, err := s.processChallenge(ctx, clientAddr)
 		if err != nil {
 			return nil, err
 		}
 		return resMsg, nil
-	case proto.ResourceRequest:
-		resMsg, err := s.processResource(ctx, reqMsg.Payload, clientAddr)
+	case powproto.QuoteRequest:
+		resMsg, err := s.processQuote(ctx, reqMsg.Payload, clientAddr)
 		if err != nil {
 			return nil, err
 		}
 		return resMsg, nil
-	case proto.ExitRequest:
+	case powproto.ExitRequest:
 		return nil, nil
-	case proto.ChallengeResponse, proto.ResourceResponse:
+	case powproto.ChallengeResponse, powproto.QuoteResponse:
 		return nil, ErrUnexpectedMessageKind
 	}
 	return nil, ErrUnsupportedMessageKind
 }
 
-func (s *Server) processChallenge(ctx context.Context, clientAddr net.Addr) (*proto.Message, error) {
+func (s *Server) processChallenge(ctx context.Context, clientAddr net.Addr) (*powproto.Message, error) {
 	resource := strings.Replace(clientAddr.String(), ":", "/", 1)
 	hc, err := hashcash.NewHashcash(resource)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate hashcash: %w", err)
+		return nil, fmt.Errorf("failed to generate challenge: %w", err)
 	}
 
 	cacheKey := fmt.Sprintf("%s%s", cacheKeyPrefix, clientAddr.String())
@@ -130,13 +130,13 @@ func (s *Server) processChallenge(ctx context.Context, clientAddr net.Addr) (*pr
 		return nil, fmt.Errorf("failed to save client rand in cache")
 	}
 
-	return &proto.Message{
-		Kind:    proto.ChallengeResponse,
+	return &powproto.Message{
+		Kind:    powproto.ChallengeResponse,
 		Payload: hc.String(),
 	}, nil
 }
 
-func (s *Server) processResource(ctx context.Context, requestData string, clientAddr net.Addr) (*proto.Message, error) {
+func (s *Server) processQuote(ctx context.Context, requestData string, clientAddr net.Addr) (*powproto.Message, error) {
 	hc, err := hashcash.Unmarshal(requestData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse request data: %w", err)
@@ -160,14 +160,14 @@ func (s *Server) processResource(ctx context.Context, requestData string, client
 	}
 
 	quote := wisdomQuotes[rand.Intn(len(wisdomQuotes))]
-	return &proto.Message{
-		Kind:    proto.ResourceResponse,
+	return &powproto.Message{
+		Kind:    powproto.QuoteResponse,
 		Payload: quote,
 	}, nil
 }
 
-func writeMessage(msg proto.Message, conn net.Conn) error {
-	rawMsg := fmt.Sprintf("%s%c", msg.String(), proto.MessageTerminator)
+func writeMessage(msg powproto.Message, conn net.Conn) error {
+	rawMsg := fmt.Sprintf("%s%c", msg.String(), powproto.MessageTerminator)
 	_, err := conn.Write([]byte(rawMsg))
 	return err
 }
