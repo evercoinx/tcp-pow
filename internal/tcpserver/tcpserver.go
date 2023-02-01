@@ -19,7 +19,7 @@ func Start(address string) error {
 	}
 	defer l.Close()
 
-	log.WithField("address", l.Addr).Info("server listening")
+	log.WithField("address", address).Info("server listening")
 	for {
 		conn, err := l.Accept()
 		if err != nil {
@@ -60,29 +60,39 @@ func handleConnection(conn net.Conn) {
 }
 
 func constructMessage(requestData string, clientAddr net.Addr) (*proto.Message, error) {
-	msg, err := proto.Parse(requestData)
+	reqMsg, err := proto.Parse(requestData)
 	if err != nil {
 		return nil, err
 	}
 
-	switch msg.Kind {
+	switch reqMsg.Kind {
 	case proto.ChallengeRequest:
-		resource := strings.Replace(clientAddr.String(), ":", "/", 1)
-		hc, err := hashcash.NewHashcash(resource)
+		resMsg, err := constructChallengeResponse(clientAddr)
 		if err != nil {
-			return nil, fmt.Errorf("failed to generate hashcash: %w", err)
+			return nil, err
 		}
-
-		msg := proto.Message{
-			Kind:    proto.ChallengeResponse,
-			Payload: hc.String(),
-		}
-		return &msg, nil
+		return resMsg, nil
+	case proto.ResourceRequest:
+		return nil, nil
 	case proto.ExitRequest:
 		return nil, nil
-	default:
-		return nil, errors.New("unknown message kind")
+	case proto.ChallengeResponse, proto.ResourceResponse:
+		return nil, errors.New("invalid message kind")
 	}
+	return nil, errors.New("unsupported message kind")
+}
+
+func constructChallengeResponse(clientAddr net.Addr) (*proto.Message, error) {
+	resource := strings.Replace(clientAddr.String(), ":", "/", 1)
+	hc, err := hashcash.NewHashcash(resource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate hashcash: %w", err)
+	}
+
+	return &proto.Message{
+		Kind:    proto.ChallengeResponse,
+		Payload: hc.String(),
+	}, nil
 }
 
 func writeMessage(msg proto.Message, conn net.Conn) error {
