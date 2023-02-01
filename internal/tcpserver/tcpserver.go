@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"strings"
 	"time"
 
 	"github.com/evercoinx/tcp-pow-server/internal/hashcash"
@@ -16,7 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const cacheKeyPrefix = "tcpserver:"
+const cacheKeyPrefix = "tcp-pow-server:"
 
 var (
 	ErrUnexpectedMessageKind  = errors.New("unexpected message kind")
@@ -24,7 +23,7 @@ var (
 	ErrInvalidChallengeRand   = errors.New("invalid challenge rand")
 )
 
-var wisdomQuotes = []string{
+var quotes = []string{
 	"The journey of a thousand miles begins with one step.",
 	"He is no fool who gives what he cannot keep to gain what he cannot lose.",
 	"It's not what you look at that matters, it's what you see.",
@@ -33,13 +32,13 @@ var wisdomQuotes = []string{
 }
 
 type Server struct {
-	cache           *redis.Client
+	cacheClient     *redis.Client
 	cacheExpiration time.Duration
 }
 
-func NewServer(rc *redis.Client, cacheExpiration time.Duration) *Server {
+func NewServer(c *redis.Client, cacheExpiration time.Duration) *Server {
 	return &Server{
-		cache:           rc,
+		cacheClient:     c,
 		cacheExpiration: cacheExpiration,
 	}
 }
@@ -119,14 +118,13 @@ func (s *Server) processMessage(ctx context.Context, requestData string, clientA
 }
 
 func (s *Server) processChallenge(ctx context.Context, clientAddr net.Addr) (*powproto.Message, error) {
-	resource := strings.Replace(clientAddr.String(), ":", "/", 1)
-	hc, err := hashcash.NewHashcash(resource)
+	hc, err := hashcash.NewHashcash(clientAddr.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate challenge: %w", err)
 	}
 
 	cacheKey := fmt.Sprintf("%s%s", cacheKeyPrefix, clientAddr.String())
-	if err := s.cache.SetEx(ctx, cacheKey, hc.Rand, s.cacheExpiration).Err(); err != nil {
+	if err := s.cacheClient.SetEx(ctx, cacheKey, hc.Rand, s.cacheExpiration).Err(); err != nil {
 		return nil, fmt.Errorf("failed to save client rand in cache")
 	}
 
@@ -147,7 +145,7 @@ func (s *Server) processQuote(ctx context.Context, requestData string, clientAdd
 	}
 
 	cacheKey := fmt.Sprintf("%s%s", cacheKeyPrefix, clientAddr.String())
-	rnd, err := s.cache.Get(ctx, cacheKey).Result()
+	rnd, err := s.cacheClient.Get(ctx, cacheKey).Result()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read client rand from cache")
 	}
@@ -155,14 +153,14 @@ func (s *Server) processQuote(ctx context.Context, requestData string, clientAdd
 		return nil, ErrInvalidChallengeRand
 	}
 
-	if err := s.cache.Del(ctx, cacheKey).Err(); err != nil {
+	if err := s.cacheClient.Del(ctx, cacheKey).Err(); err != nil {
 		return nil, fmt.Errorf("failed to delete client rand from cache")
 	}
 
-	quote := wisdomQuotes[rand.Intn(len(wisdomQuotes))]
+	rndIdx := rand.Intn(len(quotes))
 	return &powproto.Message{
 		Kind:    powproto.QuoteResponse,
-		Payload: quote,
+		Payload: quotes[rndIdx],
 	}, nil
 }
 
