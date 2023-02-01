@@ -19,6 +19,11 @@ const (
 
 const MessageTerminator byte = '\n'
 
+var (
+	ErrZeroLengthData     = errors.New("proto: zero length data")
+	ErrInvalidMessageKind = errors.New("proto: invalid message kind")
+)
+
 type Message struct {
 	Kind    MessageKind
 	Payload string
@@ -38,12 +43,12 @@ func (m Message) String() string {
 func Parse(data string) (*Message, error) {
 	data = strings.TrimRight(data, string(MessageTerminator))
 	if len(data) == 0 {
-		return nil, errors.New("zero length message")
+		return nil, ErrZeroLengthData
 	}
 
 	kind, err := strconv.Atoi(string(data[0]))
 	if err != nil {
-		return nil, errors.New("invalid message kind")
+		return nil, ErrInvalidMessageKind
 	}
 
 	msg := Message{

@@ -19,9 +19,18 @@ const (
 	hashcashRandomBytes   = 8
 	hashcashMaxIterations = 1 << 32
 	hashcashTimeFormat    = "060102150405" // YYMMDDhhmmss
+	hashcashExpiration    = 1 * time.Minute
 
 	bitsPerHex    = 4
 	codePointZero = 48
+)
+
+var (
+	ErrHashNotComputed    = errors.New("hashcash: hash not computed")
+	ErrHashNotMatched     = errors.New("hashcash: hash not matched")
+	ErrInvalidDate        = errors.New("hashcash: invalid date")
+	ErrInvalidFormat      = errors.New("hashcash: invalid format")
+	ErrUnsupportedVersion = errors.New("hashacash: unsupported version")
 )
 
 type Hashcash struct {
@@ -85,18 +94,18 @@ func base64DecodeInt(s string) (int, error) {
 	return strconv.Atoi(string(bs))
 }
 
-func (h *Hashcash) Compute() (string, error) {
+func (h *Hashcash) Compute() error {
 	zeroCount := h.Bits / bitsPerHex
-	candidate := sha1Hash(h.String())
+	hash := sha1Hash(h.String())
 
-	for !isHashMatched(candidate, codePointZero, zeroCount) {
+	for !isHashMatched(hash, codePointZero, zeroCount) {
 		h.Counter++
-		candidate = sha1Hash(h.String())
+		hash = sha1Hash(h.String())
 		if h.Counter >= hashcashMaxIterations {
-			return "", errors.New("hash not computed")
+			return ErrHashNotComputed
 		}
 	}
-	return candidate, nil
+	return nil
 }
 
 func sha1Hash(s string) string {
@@ -117,10 +126,26 @@ func isHashMatched(hash string, char rune, count int) bool {
 	return true
 }
 
-func Parse(s string) (*Hashcash, error) {
+func (h *Hashcash) Verify() error {
+	zeroCount := h.Bits / bitsPerHex
+	challenge := h.String()
+	hash := sha1Hash(challenge)
+
+	if !isHashMatched(hash, codePointZero, zeroCount) {
+		return ErrHashNotMatched
+	}
+
+	now := time.Now().UTC()
+	if h.Date.After(now) || now.Sub(h.Date) >= hashcashExpiration {
+		return ErrInvalidDate
+	}
+	return nil
+}
+
+func Unmarshal(s string) (*Hashcash, error) {
 	hcItems := strings.Split(s, ":")
 	if len(hcItems) != hashcashItemCount {
-		return nil, errors.New("invalid hashcash string format")
+		return nil, ErrInvalidFormat
 	}
 
 	ver, err := strconv.Atoi(hcItems[0])
@@ -128,7 +153,7 @@ func Parse(s string) (*Hashcash, error) {
 		return nil, fmt.Errorf("invalid version type: %w", err)
 	}
 	if ver != hashcashVersion {
-		return nil, fmt.Errorf("unsupported version: %d", ver)
+		return nil, ErrUnsupportedVersion
 	}
 
 	bits, err := strconv.Atoi(hcItems[1])

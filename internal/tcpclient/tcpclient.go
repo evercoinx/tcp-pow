@@ -29,18 +29,14 @@ func handleConnection(conn net.Conn) error {
 	if err != nil {
 		return err
 	}
-	log.WithField("challenge", hc).Debug("challenge requested")
 
-	rs, err := requestResource(conn, hc)
-	if err != nil {
+	if _, err := requestResource(conn, hc); err != nil {
 		return err
 	}
-	log.WithFields(log.Fields{"iterations": hc.Counter, "resource": rs}).Debug("resource requested")
 
 	if err := requestExit(conn); err != nil {
 		return err
 	}
-	log.Debug("exit requested")
 	return nil
 }
 
@@ -49,6 +45,7 @@ func requestChallenge(conn net.Conn) (*hashcash.Hashcash, error) {
 	if err := writeMessage(reqMsg, conn); err != nil {
 		return nil, fmt.Errorf("failed to write challenge request message: %w", err)
 	}
+	log.Debug("challenge requested")
 
 	r := bufio.NewReader(conn)
 	resData, err := r.ReadString(proto.MessageTerminator)
@@ -61,24 +58,38 @@ func requestChallenge(conn net.Conn) (*hashcash.Hashcash, error) {
 		return nil, fmt.Errorf("failed to parse challenge response data : %w", err)
 	}
 
-	challenge, err := hashcash.Parse(resMsg.Payload)
+	hc, err := hashcash.Unmarshal(resMsg.Payload)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse hashcash string: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal hashcash payload: %w", err)
 	}
-	return challenge, err
+	log.WithField("intitialChallenge", hc).Debug("challenge responded")
+
+	return hc, err
 }
 
 func requestResource(conn net.Conn, hc *hashcash.Hashcash) (string, error) {
-	challenge, err := hc.Compute()
-	if err != nil {
-		return "", fmt.Errorf("failed to compute hashcash: %w", err)
+	if err := hc.Compute(); err != nil {
+		return "", fmt.Errorf("failed to compute challenge: %w", err)
 	}
 
-	reqMsg := proto.NewMessage(proto.ResourceRequest, challenge)
+	reqMsg := proto.NewMessage(proto.ResourceRequest, hc.String())
 	if err := writeMessage(reqMsg, conn); err != nil {
 		return "", fmt.Errorf("failed to write resource request message: %w", err)
 	}
-	return "", nil
+	log.WithField("computedChallenge", hc.String()).Debug("resource requested")
+
+	r := bufio.NewReader(conn)
+	resData, err := r.ReadString(proto.MessageTerminator)
+	if err != nil {
+		return "", fmt.Errorf("failed to read resource response data: %w", err)
+	}
+
+	resMsg, err := proto.Parse(resData)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse resource response data : %w", err)
+	}
+	log.WithFields(log.Fields{"resource": resMsg.Payload}).Debug("resource responded")
+	return resMsg.Payload, nil
 }
 
 func requestExit(conn net.Conn) error {
@@ -86,6 +97,7 @@ func requestExit(conn net.Conn) error {
 	if err := writeMessage(reqMsg, conn); err != nil {
 		return fmt.Errorf("failed to write exit request message: %w", err)
 	}
+	log.Debug("exit requested")
 	return nil
 }
 
