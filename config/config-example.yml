@@ -1,0 +1,7 @@
+tcp_server:
+  address: "127.0.0.1:8000"
+  cache_expiration: "1m"
+redis:
+  address: "127.0.0.1:6379"
+  password: ""
+  db: 0
