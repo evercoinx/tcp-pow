@@ -9,20 +9,21 @@ import (
 
 	"github.com/evercoinx/tcp-pow-server/internal/hashcash"
 	"github.com/evercoinx/tcp-pow-server/internal/proto"
+	log "github.com/sirupsen/logrus"
 )
 
 func Start(address string) error {
 	l, err := net.Listen("tcp", address)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to start tcp listener: %w", err)
 	}
 	defer l.Close()
 
-	fmt.Printf("server listening at %s\n", l.Addr())
+	log.WithField("address", l.Addr).Info("server listening")
 	for {
 		conn, err := l.Accept()
 		if err != nil {
-			continue
+			return fmt.Errorf("failed to create new tcp connection: %w", err)
 		}
 		go handleConnection(conn)
 	}
@@ -31,28 +32,29 @@ func Start(address string) error {
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 	addr := conn.RemoteAddr()
-	fmt.Printf("client %s connected\n", addr)
+	log.WithField("address", addr).Debug("client connected")
 
 	r := bufio.NewReader(conn)
 	for {
 		reqData, err := r.ReadString(proto.MessageTerminator)
 		if err != nil {
-			fmt.Println("failed to read request data:", err)
+			log.WithError(err).Error("failed to read request data")
 			return
 		}
 
 		msg, err := constructMessage(reqData, addr)
 		if err != nil {
-			fmt.Println("failed to construct message:", err)
+			log.WithError(err).Error("failed to construct message")
 			return
 		}
 		if msg == nil {
-			fmt.Printf("client %s exited\n", addr)
+			log.WithField("address", addr).Debug("client disconnected")
 			return
 		}
 
 		if err := writeMessage(*msg, conn); err != nil {
-			fmt.Println("failed to write message:", err)
+			log.WithError(err).Error("failed to write response message")
+			return
 		}
 	}
 }

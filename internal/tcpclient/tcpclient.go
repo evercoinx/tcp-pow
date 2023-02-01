@@ -8,6 +8,7 @@ import (
 
 	"github.com/evercoinx/tcp-pow-server/internal/hashcash"
 	"github.com/evercoinx/tcp-pow-server/internal/proto"
+	log "github.com/sirupsen/logrus"
 )
 
 func Query(address string) error {
@@ -30,7 +31,7 @@ func handleConnection(conn net.Conn) error {
 	}
 
 	r := bufio.NewReader(conn)
-	challengeResData, err := r.ReadString('\n')
+	challengeResData, err := r.ReadString(proto.MessageTerminator)
 	if err != nil {
 		return fmt.Errorf("failed to read challenge data: %w", err)
 	}
@@ -44,12 +45,14 @@ func handleConnection(conn net.Conn) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse hashcash: %w", err)
 	}
-	fmt.Printf("hashcash: %s\n", hc)
+	log.WithField("hashcash", hc).Debug("parsed hashcash")
 
 	exitReqMsg := proto.NewMessage(proto.ExitRequest, "")
 	if err := writeMessage(exitReqMsg, conn); err != nil {
 		return fmt.Errorf("failed to write exit message: %w", err)
 	}
+
+	log.Debug("disconnected")
 	return nil
 }
 

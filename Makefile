@@ -2,6 +2,7 @@ SRVBIN = tcpserver
 CLIBIN = tcpclient
 
 deps:
+	go mod tidy
 	go mod vendor
 
 server-build:
