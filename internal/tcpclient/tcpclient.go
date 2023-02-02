@@ -1,3 +1,4 @@
+// tcpclient implements the client side functionality of the PoW protocol.
 package tcpclient
 
 import (
@@ -11,6 +12,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// QueryPipeline creates a pipeline of client queries to accomplish a full flow to get a quote
+// from the server.
 func QueryPipeline(address string) error {
 	conn, err := net.Dial("tcp", address)
 	if err != nil {

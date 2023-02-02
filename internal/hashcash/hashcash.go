@@ -1,3 +1,5 @@
+// hashcash package implements a Hashcash and provides computation, verification and parsing
+// operations for it.
 package hashcash
 
 import (
@@ -15,16 +17,16 @@ import (
 )
 
 const (
-	hashcashVersion       = 1
-	hashcashBits          = 20
-	hashcashItemCount     = 7
-	hashcashRandomBytes   = 8
-	hashcashMaxIterations = 1 << 32
-	hashcashTimeFormat    = "060102150405" // YYMMDDhhmmss
-	hashcashExpiration    = 1 * time.Minute
+	hashcashVersion       = 1               // Used protocol version
+	hashcashBits          = 20              // Size of the `bits` field
+	hashcashItemCount     = 7               // Total number of items ih a Hashcash string
+	hashcashRandomBytes   = 8               // Bytes count as a source of entropy for the `rand` field
+	hashcashMaxIterations = 1 << 32         // Max iterations to find a solution
+	hashcashTimeFormat    = "060102150405"  // Time format of the `date` field as YYMMDDhhmmss
+	hashcashExpiration    = 1 * time.Minute // Expiration interval for a Hashcash string
 
-	bitsPerHex    = 4
-	codePointZero = 48
+	bitsPerHex    = 4  // Number of bits per a hexidecimal character
+	codePointZero = 48 // Unicode code point of character `0`
 )
 
 var (
@@ -37,13 +39,13 @@ var (
 )
 
 type Hashcash struct {
-	Version   int
-	Bits      int
-	Date      time.Time
-	Resource  string
-	Extension string
-	Rand      string
-	Counter   int
+	Version   int       // Protocol version
+	Bits      int       // Number of bits used to enforce challenge complexity
+	Date      time.Time // Date of creation
+	Resource  string    // Client's identification information as [host]:[port]
+	Extension string    // Extension data that is empty for version 1
+	Rand      string    // Random number to identify each Hashcash message
+	Counter   int       // Attempt count when seeking a challenge solution
 }
 
 func NewHashcash(resource string) (*Hashcash, error) {
@@ -63,6 +65,7 @@ func NewHashcash(resource string) (*Hashcash, error) {
 	}, nil
 }
 
+// String serializes the Hashcash into a string.
 func (h *Hashcash) String() string {
 	return fmt.Sprintf("%d:%d:%s:%s:%s:%s:%s", h.Version, h.Bits, h.Date.Format(hashcashTimeFormat),
 		url.QueryEscape(h.Resource), h.Extension, h.Rand, encodeBase64Int(h.Counter))
@@ -97,6 +100,8 @@ func decodeBase64Int(s string) (int, error) {
 	return strconv.Atoi(string(bs))
 }
 
+// Compute attempts to solve a challenge by incrementing the `counter` field in the Hashcash until
+// it reaches the maximum iterations threshold.
 func (h *Hashcash) Compute() error {
 	zeroCount := h.Bits / bitsPerHex
 	hash := sha1Hash(h.String())
@@ -129,18 +134,22 @@ func isHashValid(hash string, char rune, count int) bool {
 	return true
 }
 
+// Verify carries out several tests to check the Hashcash.
 func (h *Hashcash) Verify() error {
+	// Test 1 checks that a computed Hashcash contains the required number of zeros.
 	hash := sha1Hash(h.String())
 	zeroCount := h.Bits / bitsPerHex
 	if !isHashValid(hash, codePointZero, zeroCount) {
 		return ErrInvalidHash
 	}
 
+	// Test 2 checks that the Hashcash `date` field is not in the future and is not too old.
 	now := time.Now().UTC()
 	if h.Date.After(now) || now.Sub(h.Date) >= hashcashExpiration {
 		return ErrInvalidDate
 	}
 
+	// Test 3 checks that the Hashcash contains the valid `resource` field.
 	rsItems := strings.Split(h.Resource, ":")
 	if len(rsItems) != 2 || net.ParseIP(rsItems[0]) == nil {
 		return ErrInvalidResource
@@ -153,6 +162,7 @@ func (h *Hashcash) Verify() error {
 	return nil
 }
 
+// Unmarshal deserializes a string into the Hashcash.
 func Unmarshal(s string) (*Hashcash, error) {
 	hcItems := strings.Split(s, ":")
 	if len(hcItems) != hashcashItemCount {

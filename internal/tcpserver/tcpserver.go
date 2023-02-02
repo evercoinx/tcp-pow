@@ -1,3 +1,4 @@
+// tcpclient implements the server side functionality of the PoW protocol.
 package tcpserver
 
 import (
@@ -16,9 +17,9 @@ import (
 )
 
 const (
-	cacheKeyPrefix            = "tcp-pow:"
-	cacheChallengeRandNotUsed = "0"
-	cacheChallengeRandUsed    = "1"
+	cacheKeyPrefix            = "tcp-pow:" // Prefix of a cached item in Redis
+	cacheChallengeRandNotUsed = "0"        // Flag that marks a cached `rand` item as not used by the client
+	cacheChallengeRandUsed    = "1"        // Flag that marks a cached `rand` item` as already used by the client
 )
 
 var (
@@ -28,6 +29,7 @@ var (
 	ErrChallengeRandNotFound  = errors.New("challenge rand not found")
 )
 
+// quotes is a list of items which are sent randomly to the client after successfully solving a challenge.
 var quotes = []string{
 	"The journey of a thousand miles begins with one step.",
 	"He is no fool who gives what he cannot keep to gain what he cannot lose.",
@@ -42,8 +44,8 @@ var quotes = []string{
 }
 
 type Server struct {
-	cacheClient     *redis.Client
-	cacheExpiration time.Duration
+	cacheClient     *redis.Client // Redis client
+	cacheExpiration time.Duration // Item expiration time in the Redis cache
 }
 
 func NewServer(c *redis.Client, cacheExpiration time.Duration) *Server {
@@ -53,6 +55,7 @@ func NewServer(c *redis.Client, cacheExpiration time.Duration) *Server {
 	}
 }
 
+// Start runs the TCP server bound to a certain address.
 func (s *Server) Start(address string) error {
 	l, err := net.Listen("tcp", address)
 	if err != nil {
