@@ -17,7 +17,7 @@ type AppConfig struct {
 
 type TCPServer struct {
 	Address         string        `yaml:"address" default:"0.0.0.0:8000"`
-	CacheExpiration time.Duration `yaml:"cache_expiration" default:"1m"`
+	CacheExpiration time.Duration `yaml:"cache_expiration" default:"24h"`
 }
 
 type Redis struct {

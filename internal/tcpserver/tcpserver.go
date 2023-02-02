@@ -15,12 +15,17 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const cacheKeyPrefix = "tcp-pow:"
+const (
+	cacheKeyPrefix            = "tcp-pow:"
+	cacheChallengeRandNotUsed = "0"
+	cacheChallengeRandUsed    = "1"
+)
 
 var (
 	ErrUnexpectedMessageKind  = errors.New("unexpected message kind")
 	ErrUnsupportedMessageKind = errors.New("unsupported message kind")
-	ErrInvalidChallengeRand   = errors.New("invalid challenge rand")
+	ErrChallengeRandUsed      = errors.New("challenge rand used")
+	ErrChallengeRandNotFound  = errors.New("challenge rand not found")
 )
 
 var quotes = []string{
@@ -128,9 +133,9 @@ func (s *Server) processChallenge(ctx context.Context, clientAddr net.Addr) (*po
 		return nil, fmt.Errorf("failed to generate challenge: %w", err)
 	}
 
-	cacheKey := fmt.Sprintf("%s%s", cacheKeyPrefix, clientAddr.String())
-	if err := s.cacheClient.SetEx(ctx, cacheKey, hc.Rand, s.cacheExpiration).Err(); err != nil {
-		return nil, fmt.Errorf("failed to save client rand in cache")
+	cacheKey := fmt.Sprintf("%s%s", cacheKeyPrefix, hc.Rand)
+	if err := s.cacheClient.SetEx(ctx, cacheKey, cacheChallengeRandNotUsed, s.cacheExpiration).Err(); err != nil {
+		return nil, fmt.Errorf("failed to set not used rand in cache")
 	}
 
 	return &powproto.Message{
@@ -149,17 +154,20 @@ func (s *Server) processQuote(ctx context.Context, requestData string, clientAdd
 		return nil, fmt.Errorf("failed to verify challenge: %w", err)
 	}
 
-	cacheKey := fmt.Sprintf("%s%s", cacheKeyPrefix, clientAddr.String())
+	cacheKey := fmt.Sprintf("%s%s", cacheKeyPrefix, hc.Rand)
 	rnd, err := s.cacheClient.Get(ctx, cacheKey).Result()
 	if err != nil {
-		return nil, fmt.Errorf("failed to read client rand from cache")
+		if errors.Is(err, redis.Nil) {
+			return nil, ErrChallengeRandNotFound
+		}
+		return nil, fmt.Errorf("failed to get rand from cache: %w", err)
 	}
-	if rnd != hc.Rand {
-		return nil, ErrInvalidChallengeRand
+	if rnd == cacheChallengeRandUsed {
+		return nil, ErrChallengeRandUsed
 	}
 
-	if err := s.cacheClient.Del(ctx, cacheKey).Err(); err != nil {
-		return nil, fmt.Errorf("failed to delete client rand from cache")
+	if err := s.cacheClient.SetEx(ctx, cacheKey, cacheChallengeRandUsed, s.cacheExpiration).Err(); err != nil {
+		return nil, fmt.Errorf("failed to set used rand in cache")
 	}
 
 	rndIdx := rand.Intn(len(quotes))

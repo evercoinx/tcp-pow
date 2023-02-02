@@ -1,6 +1,6 @@
 tcp_server:
   address: "0.0.0.0:8000"
-  cache_expiration: "60s"
+  cache_expiration: "24h"
 tcp_client:
   address: "server:8000"
   wait_interval: "10s"
