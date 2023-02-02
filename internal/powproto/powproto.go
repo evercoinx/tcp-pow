@@ -17,10 +17,15 @@ const (
 	ExitRequest
 )
 
-const MessageTerminator byte = '\n'
+const (
+	MessageTerminator byte = '\n'
+
+	messageLengthLimit = 1 << 12 // 4Kb
+)
 
 var (
 	ErrZeroLengthData     = errors.New("powproto: zero length data")
+	ErrLengthExceeded     = errors.New("powproto: length exceeded")
 	ErrInvalidMessageKind = errors.New("powproto: invalid message kind")
 )
 
@@ -41,6 +46,10 @@ func (m Message) String() string {
 }
 
 func Parse(data string) (*Message, error) {
+	if len(data) > messageLengthLimit {
+		return nil, ErrLengthExceeded
+	}
+
 	data = strings.TrimRight(data, string(MessageTerminator))
 	if len(data) == 0 {
 		return nil, ErrZeroLengthData

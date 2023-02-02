@@ -1,6 +1,7 @@
 package powproto_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/evercoinx/tcp-pow/internal/powproto"
@@ -63,6 +64,13 @@ func TestParse(t *testing.T) {
 			Kind:    powproto.QuoteRequest,
 			Payload: "1:20:060102150405:127.0.0.1%3A32000::Uv38ByGCZU8=:MQ==",
 		})
+	})
+
+	t.Run("error with length exceeded", func(t *testing.T) {
+		m, err := powproto.Parse(strings.Repeat("x", 4097))
+
+		require.Equal(t, err, powproto.ErrLengthExceeded)
+		require.Nil(t, m)
 	})
 
 	t.Run("error with zero length", func(t *testing.T) {
