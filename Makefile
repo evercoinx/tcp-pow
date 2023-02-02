@@ -5,6 +5,10 @@ deps:
 	go mod tidy
 	go mod vendor
 
+test:
+	go clean -testcache
+	go test -mod=vendor -v ./...
+
 server-build:
 	go build -mod=vendor -o bin/$(SERVER_BIN) cmd/$(SERVER_BIN)/main.go
 

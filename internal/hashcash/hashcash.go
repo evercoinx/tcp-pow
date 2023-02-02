@@ -161,7 +161,7 @@ func Unmarshal(s string) (*Hashcash, error) {
 
 	ver, err := strconv.Atoi(hcItems[0])
 	if err != nil {
-		return nil, fmt.Errorf("invalid version type: %w", err)
+		return nil, fmt.Errorf("invalid version format: %w", err)
 	}
 	if ver != hashcashVersion {
 		return nil, ErrUnsupportedVersion
@@ -169,7 +169,7 @@ func Unmarshal(s string) (*Hashcash, error) {
 
 	bits, err := strconv.Atoi(hcItems[1])
 	if err != nil {
-		return nil, fmt.Errorf("invalid zeroes bits type: %w", err)
+		return nil, fmt.Errorf("invalid zero bits format: %w", err)
 	}
 
 	date, err := time.Parse(hashcashTimeFormat, hcItems[2])

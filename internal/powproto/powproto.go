@@ -47,7 +47,7 @@ func Parse(data string) (*Message, error) {
 	}
 
 	kind, err := strconv.Atoi(string(data[0]))
-	if err != nil {
+	if err != nil || kind > int(ExitRequest) {
 		return nil, ErrInvalidMessageKind
 	}
 
