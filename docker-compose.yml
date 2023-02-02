@@ -2,7 +2,7 @@ version: "3"
 
 services:
   server:
-    image: "go-tcp-pow/server:latest"
+    image: "tcp-pow-server:latest"
     build:
       context: .
       dockerfile: "Dockerfile.server"
@@ -10,7 +10,7 @@ services:
       - "8000:8000"
     restart: "on-failure"
     networks:
-      - "go-tcp-pow"
+      - "tcp-pow"
     depends_on:
       - "redis"
   
@@ -20,8 +20,19 @@ services:
       - "6380:6379"
     restart: "on-failure"
     networks:
-      - "go-tcp-pow"
+      - "tcp-pow"
+
+  client:
+    image: "tcp-pow-client:latest"
+    build:
+      context: .
+      dockerfile: "Dockerfile.client"
+    restart: "on-failure"
+    networks:
+      - "tcp-pow"
+    depends_on:
+      - "server"
 
 networks:
-  go-tcp-pow:
+  tcp-pow:
     driver: "bridge"

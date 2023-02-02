@@ -1,0 +1,12 @@
+FROM golang:1.18-alpine AS build
+WORKDIR /app
+RUN apk add --update make
+COPY . .
+COPY config/config-example.yml config/config.yml
+RUN make client-build
+
+FROM golang:1.18-alpine AS deploy
+WORKDIR /
+COPY --from=build /app/bin/tcpclient /tcpclient
+COPY --from=build /app/config/config.yml /config/config.yml
+ENTRYPOINT [ "/tcpclient" ]

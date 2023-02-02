@@ -1,8 +1,9 @@
 tcp_server:
   address: "0.0.0.0:8000"
-  cache_expiration: "1m"
+  cache_expiration: "60s"
 tcp_client:
-  address: "127.0.0.1:8000"
+  address: "server:8000"
+  wait_interval: "10s"
 redis:
   address: "redis:6379"
   password: ""

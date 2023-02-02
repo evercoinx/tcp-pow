@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/evercoinx/go-tcp-pow/internal/tcpserver"
+	"github.com/evercoinx/tcp-pow/internal/tcpserver"
 	"github.com/jinzhu/configor"
 	"github.com/redis/go-redis/v9"
 	log "github.com/sirupsen/logrus"
@@ -21,7 +21,7 @@ type TCPServer struct {
 }
 
 type Redis struct {
-	Address  string `yaml:"address" default:"redis:6379"`
+	Address  string `yaml:"address" default:"127.0.0.1:6379"`
 	Password string `yaml:"password" default:""`
 	DB       int    `yaml:"db" default:"0"`
 }
@@ -33,17 +33,17 @@ func init() {
 }
 
 func main() {
-	var config AppConfig
-	configor.Load(&config, "./config/config.yml")
+	var cfg AppConfig
+	configor.Load(&cfg, "./config/config.yml")
 
 	redisCli := redis.NewClient(&redis.Options{
-		Addr:     config.Redis.Address,
-		Password: config.Redis.Password,
-		DB:       config.Redis.DB,
+		Addr:     cfg.Redis.Address,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
 	})
 
-	srv := tcpserver.NewServer(redisCli, config.TCPServer.CacheExpiration)
-	if err := srv.Start(config.TCPServer.Address); err != nil {
+	srv := tcpserver.NewServer(redisCli, cfg.TCPServer.CacheExpiration)
+	if err := srv.Start(cfg.TCPServer.Address); err != nil {
 		log.Fatal(err)
 	}
 }

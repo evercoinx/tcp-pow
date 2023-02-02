@@ -1,4 +1,4 @@
-module github.com/evercoinx/go-tcp-pow
+module github.com/evercoinx/tcp-pow
 
 go 1.18
 

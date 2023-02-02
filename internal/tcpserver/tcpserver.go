@@ -9,13 +9,13 @@ import (
 	"net"
 	"time"
 
-	"github.com/evercoinx/go-tcp-pow/internal/hashcash"
-	"github.com/evercoinx/go-tcp-pow/internal/powproto"
+	"github.com/evercoinx/tcp-pow/internal/hashcash"
+	"github.com/evercoinx/tcp-pow/internal/powproto"
 	"github.com/redis/go-redis/v9"
 	log "github.com/sirupsen/logrus"
 )
 
-const cacheKeyPrefix = "go-tcp-pow:"
+const cacheKeyPrefix = "tcp-pow:"
 
 var (
 	ErrUnexpectedMessageKind  = errors.New("unexpected message kind")
@@ -29,6 +29,11 @@ var quotes = []string{
 	"It's not what you look at that matters, it's what you see.",
 	"A man should always consider how much he has more than he wants.",
 	"That old law about 'an eye for an eye' leaves everybody blind. The time is always right to do the right thing.",
+	"The only true wisdom is in knowing you know nothing.",
+	"If you don't know where you are going, any road will get you there.",
+	"Never interrupt your enemy when he is making a mistake.",
+	"It's not what happens to you, but how you react to it that matters.",
+	"Once you label me you negate me.",
 }
 
 type Server struct {

@@ -6,8 +6,8 @@ import (
 	"io"
 	"net"
 
-	"github.com/evercoinx/go-tcp-pow/internal/hashcash"
-	"github.com/evercoinx/go-tcp-pow/internal/powproto"
+	"github.com/evercoinx/tcp-pow/internal/hashcash"
+	"github.com/evercoinx/tcp-pow/internal/powproto"
 	log "github.com/sirupsen/logrus"
 )
 
